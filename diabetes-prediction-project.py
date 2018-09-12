@@ -2,61 +2,69 @@
 # spring quarter 2016
 
 # pre: needs training file open for reading
-# post: returns number of people diagnosed with diabetes, list of
-# averages for sick people, and list of the averages for healthy people
-def training_file_list(trainingFile):
-    ill = [0]*6 #emtpy list for ill averages
-    healthy = [0]*6 #empty list for healthy averages
+# post: returns list of diabetic data averages, list of
+# nondiabetic data averages, number of diabetic patients,
+# and number of nondiabetic patients.
+def add_data(t_file):
+    ill_people = 0 #count ill people
+    healthy_people = 0 #count healthy people
+    update_list1 = [0]*6 
+    update_list2 = [0]*6
+        
+    for l in t_file: #parse lines
+        t_list = l.split(",") 
+        diagnosis = float(t_list[len(t_list)-1]) #diagnosis is 7th element
 
-    illPeople = 0 #count number of ill people
-    healthyPeople = 0 #count number of healthy people
+        clean_list = replace_question(t_list) #replace question marks w/ zero
 
-    for l in trainingFile:
-        IDX = -1 #set index for finding question marks
-        trainingList = l.split(",") 
-        diagnosis = float(trainingList[len(trainingList)-1]) #7th element is diagnosis
+        if diagnosis >= 0.5: #if ill patient
+            ill_people += 1
+            summed_ill = summed_data(clean_list, update_list1) #add data to all other ill patients' data
+        else: #if patient is healthy
+            healthy_people += 1
+            summed_healthy = summed_data(clean_list, update_list2) #add data to all other healthy patients' data
 
-        for element in trainingList: #if there's a question mark, replace with 0
-            IDX += 1 
-            if element == "?": 
-                trainingList[IDX] = 0 
+    return summed_ill, summed_healthy, ill_people, healthy_people
+
+
+## pre: needs list of one patient's data
+## post: returns list where question marks are replaced by zeros
+def replace_question(list1):
+    idx = -1
+    for el in list1: #if there's a question mark, replace with 0
+        idx += 1 
+        if el == "?": 
+            list1[idx] = 0 
+
+    return list1
+
+
+## pre: needs list of one patient's data
+## post: returns list with summed data
+def summed_data(data_list, alist):
+    idx = -1  
+    for el in data_list:
+        idx += 1 
+        el = float(el)
+        if idx < len(data_list)-1: #if element is NOT diagnosis (last element)
+            alist[idx] += el #add element into new list at that index
             
-        if diagnosis >= 0.5: #if patient is ill
-            illPeople += 1 
-            idxIll = -1 #set index for elements of an ill person
+    return alist
 
-            for element in trainingList: 
-                element = float(element) 
-                idxIll += 1 
-                if idxIll < len(trainingList)-1: #for any index that's LESS than the
-                                                 #index of last element (don't want diagnosis)
-                    ill[idxIll] = (ill[idxIll] + element) #add element into ill list AT THAT
-                                                          #INDEX
-        else: #if patient is not ill
-            healthyPeople += 1 
-            idxHealthy = -1 #set index for elements of a healthy person
 
-            for element in trainingList:
-                idxHealthy += 1 
-                if idxHealthy < len(trainingList)-1: #for any index that's LESS than the
-                                                     #index of last element
-                    healthy[idxHealthy] = (healthy[idxHealthy] + float(element)) #add element
-                                                     #(as a float) into healthy list AT THAT
-                                                     #INDEX
+# pre: needs list of summed data and number of patients
+# post: returns averaged data
+def average_data(summed_list, patients):
+    idx = -1
+    avg_data = [] #list for averaged data
 
-    index1 = -1 
-    for element in ill:
-        index1 += 1
-        ill[index1] = float(format(ill[index1]/illPeople, ".2f")) #divide every element in ill
-                                    #by number of ill people (to get the averages)
-
-    index1 = -1 
-    for element in healthy:
-        index1 += 1
-        healthy[index1] = float(format(healthy[index1]/healthyPeople, ".2f")) #divide every
-                                    #element in healthy by number of healthy people
-    return illPeople, ill, healthy 
-
+    for el in summed_list:
+        idx += 1
+        avg = float(format(summed_list[idx]/patients, ".2f")) #divide ea. summed
+                                    #element by number of patients (to obtain average)
+        avg_data.append(avg)
+        
+    return avg_data
 
 
 # pre: needs list of averages for sick people and list of averages for healthy people
@@ -181,9 +189,9 @@ def writeStats(averages):
                 print("This file is empty.")
             else:
                 break
-            
-    setFile = open(infile, "r") #note-to-self: needed to open/read file AGAIN
-                                #outside of while loop. 
+
+    setFile.seek(0) #reset file reading marker
+    
     outfile = input("Enter the name of the output file: ") 
     csv = open(outfile, "w") 
 
@@ -195,19 +203,22 @@ def writeStats(averages):
     
 def main():
     infile = input("Enter the name of the training set file: ")
-    trainingFile = open(infile, "r") 
+    training_file = open(infile, "r")
 
-    illPeople, ill, healthy = training_file_list(trainingFile) 
-
-    trainingFile.seek(0) #reset file reading marker
+    add_ill, add_healthy, diabetic, nondiabetic = add_data(training_file)
     
-    averages = means(ill, healthy) 
-    PEOPLE, ACC = predictTrainingFile(trainingFile, averages)
+    avg_ill = average_data(add_ill, diabetic) #average ill data
+    avg_healthy = average_data(add_healthy, nondiabetic) #average healthy data
+
+    training_file.seek(0) #reset file reading marker
+    
+    averages = means(avg_ill, avg_healthy) 
+    PEOPLE, ACC = predictTrainingFile(training_file, averages)
     accuracy1 = accuracy(PEOPLE, ACC)
 
-    printStats(healthy, ill, averages, accuracy1) 
+    printStats(avg_healthy, avg_ill, averages, accuracy1) 
     writeStats(averages) 
 
-    trainingFile.close() 
+    training_file.close() 
     
 main()
