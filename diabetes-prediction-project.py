@@ -1,5 +1,6 @@
 # Emily M. Hoang
-# spring quarter 2016
+# Spring quarter 2016 project
+# Edited Sept. 2018
 
 # pre: needs training file open for reading
 # post: returns list of diabetic data averages, list of
@@ -20,6 +21,7 @@ def add_data(t_file):
         if diagnosis >= 0.5: #if ill patient
             ill_people += 1
             summed_ill = summed_data(clean_list, update_list1) #add data to all other ill patients' data
+
         else: #if patient is healthy
             healthy_people += 1
             summed_healthy = summed_data(clean_list, update_list2) #add data to all other healthy patients' data
@@ -83,122 +85,115 @@ def means(ill, healthy):
 
 # pre: needs training file open for reading and list of averages (calculated
 # between ill and healthy)
-# post: returns total number of people in training file, and number of
-# people for whom predictions are CORRECT.
-def predictTrainingFile(trainingFile, averages):
-    PEOPLE = 0 #count total number of people
-    ACC = 0 #count number of people for whom the predictions are CORRECT.  This is
-            #the ACCURACY COUNTER
+# post: returns total number of people in training file, and number of correct
+# diagnoses predictions.
+def predict_training_file(file1, means):
+    people = 0 #count patients
+    correct_predictions = 0 #count number of correct diagnoses predictions
     
-    for l in trainingFile:
-        PEOPLE += 1
-        IDX = -1 #set index for finding question marks
-        trainingList = l.split(",") 
+    for l in file1:
+        people += 1
+        t_list = l.split(",") 
         idx = -1 #set index for elements 
-        greater_than_average = 0 #count number of "at risk" elements (elements that are
-                                 #greater than corresponding value in averages list) 
+        greater_than_mean = 0 #count number of the patient's "at risk" elements 
+                                 #(elements that are greater than corresponding
+                                 #value in means/averages list) 
 
-        for element in trainingList:#if there's a question mark, replace with 0
-            IDX += 1
-            if element == "?": 
-                trainingList[IDX] = 0
+        clean_list = replace_question(t_list) #replace question marks w/ zero
 
-        for element in trainingList: 
-            element = float(element) 
+        for el in t_list: 
+            el = float(el) 
             idx += 1
-            if idx < len(trainingList)-1:#for any index that's LESS than the index of
-                                         #last element
-                if element > averages[idx]: #if element is greater than the value in averages
-                                            #list, at that index 
-                    greater_than_average += 1
+            if idx < len(t_list)-1:#if element is not diagnoses
+                if el > means[idx]: #if element is "at risk"
+                    greater_than_mean += 1
                     
-        if greater_than_average > 3 and float(trainingList[len(trainingList)-1])>0.5:
-             ACC += 1 #if more than 3 "at risk" attributes and person is ill, increment
-                      #accuracy counter
-        if greater_than_average <= 3 and float(trainingList[len(trainingList)-1])<=0.5:
-             ACC += 1 #if 3 or fewer "at risk" attributes and person is healthy, increment
-                      #accuracy counter 
+        if greater_than_mean > 3 and float(t_list[len(t_list)-1]) >= 0.5:
+             correct_predictions += 1 #if over 3 data elements are "at risk" and
+                                      #person is diabetic, increment correct_predictions counter
+        if greater_than_mean <= 3 and float(t_list[len(t_list)-1]) < 0.5:
+             correct_predictions += 1 #if 3 or fewer elements are "at risk" and person is nondiabetic,
+                                      #increment correct_predictions counter 
 
-    return PEOPLE, ACC
+    return people, correct_predictions
 
 
 
 # pre: needs total number of people in training file, and number of people for whom
 # predictions are correct
 # post: returns accuracy of program's predictions
-def accuracy(PEOPLE, ACC): 
-    accuracy = float(format(ACC/PEOPLE, ".2f"))
+def model_accuracy(people, accuracy1): 
+    ACC = float(format(accuracy1/people, ".2f"))
     
-    return accuracy
-
+    return ACC
 
 
 # pre: needs test file open for reading, file open for writing, and
 # list of averages (calculated between ill and healthy)
 # post: writes each patient's ID number to file, and their predicted diagnosis
-def predictSetFile(setFile, csv,averages):
-    csv.write("id" +"," + "disease?\n") #write first line
-    for l in setFile:
-        newList = l.split(",") 
+def predict_set_file(f1, f2,averages):
+    f2.write("id" +"," + "disease?\n") #write first line
+    for l in f1:
+        f1_list = l.split(",") 
         idx = -1 
-        atRisk = 0 #count number of "at risk" attributes
+        at_risk = 0 #count number of "at risk" attributes
 
-        for element in newList:
+        for el in f1_list:
             idx += 1
             if idx == 0: #first element of list (patient id)
-                csv.write(element + ",")   
+                f2.write(el + ",")   
             else:
-                element = float(element) 
-                if element > averages[idx-1]: #if element is greater than value in averages
-                                              #at that index MINUS 1 ("index minus 1" because
-                                              #averages has only six elements, but newList has
-                                              #seven.  We don't want the first element from
-                                              #newList, so we have to account for that.)
-                    atRisk += 1
+                el = float(el) 
+                if el > averages[idx-1]: #if element is greater than value in averages
+                                         #at that index MINUS 1 (because averages has
+                                         #only six elements, but f1_list has seven.  We
+                                         #don't want the first element from f1_list, so
+                                         #we have to account for that.)
+                    at_risk += 1
 
-        if atRisk > 3: #if more than 3 "at risk" attributes
-            csv.write("Yes\n") 
+        if at_risk > 3: #if more than 3 attributes are "at risk"
+            f2.write("Yes\n") 
         else: 
-            csv.write("No\n") 
+            f2.write("No\n") 
 
 
 
-# pre: needs list of averages for sick people, list of averages for healthy people,
-# list of averages calculated between ill and healthy, and accuracy
+# pre: needs list of averages for nondiabetic patients, list of averages for diabetic patients,
+# list of averages calculated between ill and healthy, and model's accuracy
 # post: prints stats for training file 
-def printStats(healthy,ill,averages,accuracy): 
+def print_stats(healthy,ill,avg,acc): 
     print("Healthy patients' averages:\n", healthy)
     print("Ill patients' averages:\n", ill)
-    print("Separator values:\n", averages)
-    print("Accuracy:\n", accuracy)
+    print("Separator values:\n", avg)
+    print("Accuracy:\n", acc)
     print()
 
 
 
 # pre: needs list of averages (calculated between ill and healthy)
 # post: executes predictSetFile function (which writes to another file)
-def writeStats(averages):
+def write_stats(avg):
     while True: 
         infile = input("Enter the name of the test set file: ") 
         if infile == "": #if user doesn't enter any file name
             print("You must enter a file name.")
         else:
-            setFile = open(infile, "r")
-            file = setFile.read()
-            if file == "":
+            set_file = open(infile, "r")
+            file1 = set_file.read()
+            if file1 == "":
                 print("This file is empty.")
             else:
                 break
 
-    setFile.seek(0) #reset file reading marker
+    set_file.seek(0) #reset file reading marker
     
     outfile = input("Enter the name of the output file: ") 
-    csv = open(outfile, "w") 
+    results_file = open(outfile, "w") 
 
-    predictSetFile(setFile,csv,averages) 
+    predict_set_file(set_file,results_file,avg) 
 
-    setFile.close() 
-    csv.close()
+    set_file.close() 
+    results_file.close()
     
     
 def main():
@@ -208,17 +203,17 @@ def main():
     add_ill, add_healthy, diabetic, nondiabetic = add_data(training_file)
     
     avg_ill = average_data(add_ill, diabetic) #average ill data
-    avg_healthy = average_data(add_healthy, nondiabetic) #average healthy data
+    avg_healthy = average_data(add_healthy, nondiabetic) #average healthy data    
+    averages = means(avg_ill, avg_healthy)
 
     training_file.seek(0) #reset file reading marker
-    
-    averages = means(avg_ill, avg_healthy) 
-    PEOPLE, ACC = predictTrainingFile(training_file, averages)
-    accuracy1 = accuracy(PEOPLE, ACC)
+    patients, accurate_predictions = predict_training_file(training_file, averages)
+    accuracy = model_accuracy(patients, accurate_predictions)
 
-    printStats(avg_healthy, avg_ill, averages, accuracy1) 
-    writeStats(averages) 
+    print_stats(avg_healthy, avg_ill, averages, accuracy) 
+    write_stats(averages) 
 
     training_file.close() 
     
 main()
+
